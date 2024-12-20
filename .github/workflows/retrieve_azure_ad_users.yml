@@ -5,20 +5,22 @@ on:
 
 jobs:
   retrieve-users:
-    runs-on: windows-latest
-
+    runs-on: ubuntu-latest  # Use a Linux-based runner
+    
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
 
     - name: Set up Azure CLI
       uses: azure/CLI@v1
+      with:
+        azcliversion: latest
 
     - name: Login to Azure
       run: az login --use-device-code
 
     - name: Run PowerShell Script
+      shell: pwsh
       run: |
-        pwsh -Command "& .\retrieve_users.ps1"
-      env:
-        AZURE_DEFAULT_OUTPUT: json
+        # Execute the PowerShell script to fetch Azure AD users
+        ./RetrieveAzureUsers.ps1
