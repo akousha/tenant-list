@@ -1,0 +1,24 @@
+name: Retrieve Azure AD Users
+
+on:
+  workflow_dispatch:
+
+jobs:
+  retrieve-users:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Azure CLI
+      uses: azure/CLI@v1
+
+    - name: Login to Azure
+      run: az login --use-device-code
+
+    - name: Run PowerShell Script
+      run: |
+        pwsh -Command "& .\retrieve_users.ps1"
+      env:
+        AZURE_DEFAULT_OUTPUT: json
