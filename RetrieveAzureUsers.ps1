@@ -9,15 +9,25 @@ if ($LASTEXITCODE -ne 0) {
 # Step 1: Login to Azure using environment variables or Device Code Flow
 Write-Host "Logging in to Azure..."
 if ($env:AZURE_CREDENTIALS) {
-    Write-Host "Using Service Principal for login..."
-    $creds = $env:AZURE_CREDENTIALS | ConvertFrom-Json
-    az login --service-principal `
-        --username $creds.clientId `
-        --password $creds.clientSecret `
-        --tenant $creds.tenantId | Out-Null
+    try {
+        Write-Host "Using Service Principal for login..."
+        $creds = $env:AZURE_CREDENTIALS | ConvertFrom-Json
+        az login --service-principal `
+            --username $creds.clientId `
+            --password $creds.clientSecret `
+            --tenant $creds.tenantId | Out-Null
+    } catch {
+        Write-Host "Failed to login using Service Principal. Ensure credentials are correct." -ForegroundColor Red
+        exit 1
+    }
 } else {
     Write-Host "Using Device Code Flow for login..."
-    az login --use-device-code | Out-Null
+    try {
+        az login --use-device-code | Out-Null
+    } catch {
+        Write-Host "Failed to login using Device Code Flow. Exiting." -ForegroundColor Red
+        exit 1
+    }
 }
 
 # Verify login was successful
@@ -30,13 +40,16 @@ Write-Host "Azure login successful." -ForegroundColor Green
 
 # Step 2: Retrieve Access Token from Azure CLI
 Write-Host "Retrieving access token from Azure CLI..."
-$accessToken = az account get-access-token --resource https://graph.microsoft.com --query accessToken -o tsv
-
-if (-not $accessToken) {
+try {
+    $accessToken = az account get-access-token --resource https://graph.microsoft.com --query accessToken -o tsv
+    if (-not $accessToken) {
+        throw "Access token retrieval failed."
+    }
+    Write-Host "Access token retrieved successfully." -ForegroundColor Green
+} catch {
     Write-Host "Failed to retrieve access token. Ensure your account has appropriate permissions." -ForegroundColor Red
     exit 1
 }
-Write-Host "Access token retrieved successfully." -ForegroundColor Green
 
 # Step 3: Define the initial Graph API request
 $graphEndpoint = "https://graph.microsoft.com/v1.0/users"
@@ -70,9 +83,14 @@ do {
 
 # Step 6: Save all users to a CSV file
 Write-Host "Saving users to CSV file..."
-$csvFilePath = "all_users.csv" # Output to the GitHub Actions workspace
-$allUsers | Export-Csv -Path $csvFilePath -NoTypeInformation -Force
-Write-Host "Users saved to $csvFilePath" -ForegroundColor Green
+$csvFilePath = $PSScriptRoot + "\all_users.csv" # Save in the current script directory
+try {
+    $allUsers | Export-Csv -Path $csvFilePath -NoTypeInformation -Force
+    Write-Host "Users saved to $csvFilePath" -ForegroundColor Green
+} catch {
+    Write-Host "Failed to save users to CSV file: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
 
 # Step 7: Output summary
 Write-Host "Total users retrieved: $($allUsers.Count)" -ForegroundColor Cyan
