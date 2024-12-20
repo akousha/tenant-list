@@ -5,8 +5,8 @@ on:
 
 jobs:
   retrieve-users:
-    runs-on: ubuntu-latest  # Linux-based runner
-    
+    runs-on: ubuntu-latest
+
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
@@ -17,9 +17,11 @@ jobs:
         sudo apt-get install -y azure-cli
 
     - name: Login to Azure
-      run: az login --use-device-code
+      id: azure-login
+      run: |
+        az login --use-device-code
+        echo "TOKEN=$(az account get-access-token --query accessToken -o tsv)" >> $GITHUB_ENV
 
     - name: Run PowerShell Script
       shell: pwsh
-      run: |
-        pwsh -File ./RetrieveAzureUsers.ps1
+      run: pwsh -File ./RetrieveAzureUsers.ps1 -AccessToken ${{ env.TOKEN }}
